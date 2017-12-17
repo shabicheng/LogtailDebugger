@@ -35,3 +35,4 @@ HEADERS += \
 FORMS += \
         mainwindow.ui \
     regexdebugger.ui
+ICON = logtail.icns
