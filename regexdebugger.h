@@ -4,6 +4,7 @@
 #include <QWidget>
 #include <QRegExp>
 #include <QTextCharFormat>
+#include <QRegularExpression>
 
 namespace Ui {
 class RegexDebugger;
@@ -22,13 +23,13 @@ public slots:
     void OnStart(bool);
 
 public:
-    bool FindValidPrefix(QRegExp & regExp, QString & log, QString & reg);
+    bool FindValidPrefix(QRegularExpression & regExp, QString & log, QString & reg);
 
     void SetValidIndex(int logIndex, int regIndex);
 
     void ClearFormat();
 
-    void Performance(QRegExp & regExp, QString & log, QString & reg);
+    void Performance(QRegularExpression & regExp, QString & log, QString & reg);
 
 private:
     Ui::RegexDebugger *ui;

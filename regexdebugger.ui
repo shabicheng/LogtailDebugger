@@ -19,7 +19,7 @@
      <item>
       <widget class="QLabel" name="label">
        <property name="text">
-        <string>日志内容</string>
+        <string>日志内容(只输入一条日志，日志中可以包括换行符)</string>
        </property>
       </widget>
      </item>

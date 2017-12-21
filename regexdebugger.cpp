@@ -22,17 +22,14 @@ RegexDebugger::~RegexDebugger()
     delete ui;
 }
 
-void RegexDebugger::Performance(QRegExp & regex, QString & log, QString & reg)
+void RegexDebugger::Performance(QRegularExpression & regex, QString & log, QString & )
 {
     qint64 nowTime = QDateTime::currentMSecsSinceEpoch();
     qint64 endTime = 0;
     int i = 0;
     for (; i < 100; ++i)
     {
-        if (!regex.exactMatch(log))
-        {
-            qDebug() << "internal error" << endl;
-        }
+        regex.match(log);
         endTime = QDateTime::currentMSecsSinceEpoch();
         if (endTime - nowTime >= 1000)
         {
@@ -41,11 +38,10 @@ void RegexDebugger::Performance(QRegExp & regex, QString & log, QString & reg)
         }
     }
 
-    ui->resultEdit->setPlainText(QString("[INFO] Success, regex match run %1 times, cost %2 ms\n").arg(i).arg(endTime - nowTime) + ui->resultEdit->toPlainText());
-
+    ui->resultEdit->setPlainText(QString("[INFO] 匹配成功, 共匹配 [%1] 次, 耗时 [%2] ms\n").arg(i).arg(endTime - nowTime) + ui->resultEdit->toPlainText());
 }
 
-bool RegexDebugger::FindValidPrefix(QRegExp &, QString & log, QString & reg)
+bool RegexDebugger::FindValidPrefix(QRegularExpression &, QString & log, QString & reg)
 {
     QList<int> leftList;
     for (int i = 0; i < reg.size(); ++i)
@@ -70,37 +66,39 @@ bool RegexDebugger::FindValidPrefix(QRegExp &, QString & log, QString & reg)
             break;
         QString subReg = reg.left(leftList[i]);
         subReg += ".*";
-        QRegExp subRegExp(subReg);
+        QRegularExpression subRegExp(subReg);
         if (!subRegExp.isValid())
         {
             ui->progressBar->setValue(100);
-            ui->resultEdit->setText(QString("[ERROR] Internal error : %1, %2").arg(subReg).arg(subRegExp.errorString()));
+            ui->resultEdit->setText(QString("[ERROR] 未知错误 : %1, %2").arg(subReg).arg(subRegExp.errorString()));
             return false;
         }
-        if (subRegExp.exactMatch(log) && subRegExp.matchedLength() == log.size())
+        QRegularExpressionMatch match = subRegExp.match(log);
+        if (match.captured(0).size() == log.size())
         {
             ui->progressBar->setValue(100);
-            QStringList result = subRegExp.capturedTexts();
-            result.removeFirst();
-            ui->resultEdit->setText(QString("[ERROR] Regex match error, only sub regex matched.\n    extraction result : ") + result.join(", "));
+            QStringList result;
+            for (int i = 1; i <= match.lastCapturedIndex(); ++i)
+                result.append(match.captured(i));
+            ui->resultEdit->setText(QString("[ERROR] 匹配失败，只有部分字段匹配\n    提取成功的字段如下 : ") + result.join(", ") + "\n匹配成功的部分日志以及正则表达式参见高亮部分.");
 
             // check sub regex matched log index
             subReg = reg.left(leftList[i]);
-            QRegExp subR(subReg);
-            int matchIndex = subR.indexIn(log);
-            if (matchIndex == 0)
+            QRegularExpression subR(subReg);
+            QRegularExpressionMatch subMatch = subR.match(log);
+            if (subMatch.hasMatch() && subMatch.capturedStart(0) == 0)
             {
-                qDebug() << "match sub log :" << log.left(subR.matchedLength()) << endl;
+                qDebug() << "match sub log :" << subMatch.captured(0) << endl;
                 qDebug() << "match sub regex :" << subReg << endl;
 
-                SetValidIndex(subR.matchedLength(), leftList[i]);
+                SetValidIndex(subMatch.capturedEnd(0), leftList[i]);
             }
 
             return true;
         }
     }
     ui->progressBar->setValue(100);
-    ui->resultEdit->setText(QString("[ERROR] Regex match error, no sub regex matched"));
+    ui->resultEdit->setText(QString("[ERROR] 正则匹配失败，没有任何字段匹配成功"));
     return false;
 }
 
@@ -166,43 +164,46 @@ void RegexDebugger::OnStart(bool)
     QString log = ui->logTextEdit->toPlainText();
     QString reg = ui->regexEdit->toPlainText();
     qDebug() << "log :" << log << "\n reg :" << reg << endl;
-    QRegExp regExp(reg);
+    QRegularExpression regExp(reg);
     if (!regExp.isValid())
     {
         ui->progressBar->setValue(100);
-        ui->resultEdit->setText(QString("Invalid regex : error %1").arg(regExp.errorString()));
+        ui->resultEdit->setText(QString("非法正则表达式，错误信息： %1").arg(regExp.errorString()));
         this->repaint();
         return;
     }
     if (log.size() == 0)
     {
         ui->progressBar->setValue(100);
-        ui->resultEdit->setText(QString("Empty log context"));
+        ui->resultEdit->setText(QString("日志内容不能为空"));
         this->repaint();
         return;
     }
-    if (regExp.exactMatch(log) && regExp.matchedLength() == log.size())
+    QRegularExpressionMatch match = regExp.match(log);
+    if (match.hasMatch() && match.captured(0).size() == log.size())
     {
         ui->progressBar->setValue(100);
-        QStringList result = regExp.capturedTexts();
-        result.removeFirst();
-        ui->resultEdit->setText(QString("   extraction result : ") + result.join(", "));
+        QStringList result;
+        for (int i = 1; i <= match.lastCapturedIndex(); ++i)
+            result.append(match.captured(i));
+        ui->resultEdit->setText(QString("   提取成功的字段如下 : ") + result.join(", "));
         SetValidIndex(log.size(), reg.size());
         Performance(regExp, log, reg);
         this->repaint();
         return;
     }
-    if (regExp.indexIn(log) == 0)
+    if (match.capturedStart(0) == 0)
     {
         ui->progressBar->setValue(100);
-        QStringList result = regExp.capturedTexts();
-        result.removeFirst();
-        ui->resultEdit->setText(QString("[ERROR] Regex match error, only sub regex matched\n    extraction result : ") + result.join(", "));
-        SetValidIndex(regExp.matchedLength(), reg.size());
+        QStringList result;
+        for (int i = 1; i <= match.lastCapturedIndex(); ++i)
+            result.append(match.captured(i));
+        ui->resultEdit->setText(QString("[ERROR] 匹配失败，只有部分字段匹配\n    提取成功的字段如下 : ") + result.join(", ") + "\n匹配成功的部分日志以及正则表达式参见高亮部分.");
+        SetValidIndex(match.capturedEnd(0), reg.size());
         this->repaint();
         return;
     }
-    qDebug() << "unmatch" << endl;
+    qDebug() << "无法匹配" << endl;
 
     FindValidPrefix(regExp, log, reg);
     this->repaint();
