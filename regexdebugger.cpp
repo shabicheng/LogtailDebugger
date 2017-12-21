@@ -1,8 +1,10 @@
-#include "regexdebugger.h"
+﻿#include "regexdebugger.h"
 #include "ui_regexdebugger.h"
 #include <QRegExp>
 #include <QDebug>
 #include <QDateTime>
+
+#pragma execution_character_set("utf-8")
 
 RegexDebugger::RegexDebugger(QWidget *parent) :
     QWidget(parent),
@@ -98,7 +100,7 @@ bool RegexDebugger::FindValidPrefix(QRegularExpression &, QString & log, QString
         }
     }
     ui->progressBar->setValue(100);
-    ui->resultEdit->setText(QString("[ERROR] 正则匹配失败，没有任何字段匹配成功"));
+    ui->resultEdit->setText(QString("[ERROR] 正则匹配失败"));
     return false;
 }
 
@@ -168,14 +170,14 @@ void RegexDebugger::OnStart(bool)
     if (!regExp.isValid())
     {
         ui->progressBar->setValue(100);
-        ui->resultEdit->setText(QString("非法正则表达式，错误信息： %1").arg(regExp.errorString()));
+        ui->resultEdit->setText(QString("[ERROR] 非法正则表达式，错误信息： %1").arg(regExp.errorString()));
         this->repaint();
         return;
     }
     if (log.size() == 0)
     {
         ui->progressBar->setValue(100);
-        ui->resultEdit->setText(QString("日志内容不能为空"));
+        ui->resultEdit->setText(QString("[ERROR] 日志内容不能为空"));
         this->repaint();
         return;
     }
